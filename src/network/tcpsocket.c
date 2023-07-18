@@ -189,6 +189,7 @@ static void client_read_cb(struct ustream *s, int bytes) {
             }
 
             if (network_config.use_symm_enc) {
+#if USE_GCRYPT
                 char *dec = gcrypt_decrypt_msg(cl->str + HEADER_SIZE, cl->final_len - HEADER_SIZE);//len of str is final_len
                 if (!dec) {
                     dawnlog_error("not enough memory (" STR_QUOTE(__LINE__) ")\n");
@@ -199,6 +200,7 @@ static void client_read_cb(struct ustream *s, int bytes) {
                 handle_network_msg(dec);
                 dawn_free(dec);
                 dec = NULL;
+#endif
             } else {
                 handle_network_msg(cl->str + HEADER_SIZE);//len of str is final_len
             }
@@ -390,6 +392,7 @@ void send_tcp(char *msg) {
 
     struct network_con_s *con, *tmp;
     if (network_config.use_symm_enc) {
+#if USE_GCRYPT
         int length_enc;
         size_t msglen = strlen(msg)+1;
         char *enc = gcrypt_encrypt_msg(msg, msglen, &length_enc);
@@ -434,6 +437,7 @@ void send_tcp(char *msg) {
         final_str = NULL;
         dawn_free(enc);
         enc = NULL;
+#endif
     } else {
         size_t msglen = strlen(msg) + 1;
         uint32_t final_len = msglen + sizeof(final_len);

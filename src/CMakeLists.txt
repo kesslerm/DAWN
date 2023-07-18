@@ -1,6 +1,16 @@
 cmake_minimum_required(VERSION 2.6)
 PROJECT(dawn)
 
+OPTION (USE_GCRYPT "Use grypt as crypto provider" OFF)
+IF (USE_GCRYPT)
+        add_definitions(-DUSE_GCRYPT)
+        set(CRYPTO_LIBRARIES gcrypt)
+        set(CRYPTO_SOURCES crypto/crypto.c include/crypto.h)
+ELSE()
+        set(CRYPTO_LIBRARIES "")
+        set(CRYPTO_SOURCES "")
+ENDIF()
+
 INCLUDE_DIRECTORIES(include)
 
 ADD_DEFINITIONS(-Os -Wall -Werror --std=gnu99 -Wmissing-declarations -Wno-unknown-warning-option -Wno-format-truncation)
@@ -31,8 +41,7 @@ SET(SOURCES
         utils/dawn_uci.c
         include/dawn_uci.h
 
-        crypto/crypto.c
-        include/crypto.h
+        ${CRYPTO_SOURCES}
 
         include/utils.h
         utils/utils.c
@@ -77,7 +86,7 @@ SET(SOURCES_TEST_HEADER
         test/test_header.c)
 
 SET(LIBS
-        ubox ubus json-c blobmsg_json uci gcrypt iwinfo pthread)
+        ubox ubus json-c blobmsg_json uci iwinfo pthread ${CRYPTO_LIBRARIES})
 
 ADD_EXECUTABLE(dawn ${SOURCES})
 ADD_EXECUTABLE(test_storage ${SOURCES_TEST_STORAGE})

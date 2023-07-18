@@ -412,6 +412,7 @@ struct network_config_s uci_get_dawn_network() {
             // CONFIG-N: broadcast_port|IP port for broadcast and multicast|[1026]
             DAWN_SET_CONFIG_INT(ret, s, broadcast_port);
 
+#if USE_GCRYPT
             // CONFIG-N: shared_key|Unused|N/A
             const char* str_shared_key = uci_lookup_option_string(uci_ctx, s, "shared_key");
             if (str_shared_key)
@@ -421,6 +422,7 @@ struct network_config_s uci_get_dawn_network() {
             const char* str_iv = uci_lookup_option_string(uci_ctx, s, "iv");
             if (str_iv)
                 strncpy(ret.iv, str_iv, MAX_KEY_LENGTH);
+#endif
 
             // CONFIG-N: network_option|Method of networking between DAWN instances|0 = Broadcast; 2 = Multicast; [2 = TCP with UMDNS discovery]; 3 = TCP w/out UMDNS discovery
             DAWN_SET_CONFIG_INT(ret, s, network_option);
@@ -432,6 +434,13 @@ struct network_config_s uci_get_dawn_network() {
             DAWN_SET_CONFIG_INT(ret, s, collision_domain);
             // CONFIG-N: bandwidth|Unused|N/A
             DAWN_SET_CONFIG_INT(ret, s, bandwidth);
+
+#if !USE_GCRYPT
+            if (ret.use_symm_enc) {
+                ret.use_symm_enc = 0;
+                dawnlog_error("This variant of DAWN does not support encryption.\n");
+            }
+#endif
             return ret;
         }
     }

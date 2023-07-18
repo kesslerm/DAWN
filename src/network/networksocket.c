@@ -29,7 +29,9 @@ static pthread_mutex_t send_mutex;
 
 void *receive_msg(void *args);
 
+#if USE_GCRYPT
 void *receive_msg_enc(void *args);
+#endif
 
 int init_socket_runopts(const char *_ip, int _port, int _multicast_socket) {
 
@@ -46,10 +48,12 @@ int init_socket_runopts(const char *_ip, int _port, int _multicast_socket) {
 
     pthread_t sniffer_thread;
     if (network_config.use_symm_enc) {
+#if USE_GCRYPT
         if (pthread_create(&sniffer_thread, NULL, receive_msg_enc, NULL)) {
             dawnlog_error("Could not create receiving thread!\n");
             return -1;
         }
+#endif
     } else {
         if (pthread_create(&sniffer_thread, NULL, receive_msg, NULL)) {
             dawnlog_error("Could not create receiving thread!\n");
@@ -85,6 +89,7 @@ static void* receive_msg_inner(void* args, bool is_enc) {
         }
         else
         {
+#if USE_GCRYPT
             size_t gcrypt_max_len = B64_DECODE_LEN(strlen(recv_string));
             char* gcrypt_buf = dawn_malloc(gcrypt_max_len);
             if (!gcrypt_buf) {
@@ -102,16 +107,19 @@ static void* receive_msg_inner(void* args, bool is_enc) {
                 dawnlog_error("Received network error: not enough memory\n");
                 return 0;
             }
+#endif
         }
 
         dawnlog_debug("Received network message: %s\n", final_msg);
         handle_network_msg(final_msg);
 
+#if USE_GCRYPT
         if (is_enc)
         {
             dawn_free(final_msg);
             final_msg = NULL;
         }
+#endif
     }
 }
 
@@ -119,9 +127,11 @@ void* receive_msg(void* args) {
     return receive_msg_inner(args, false);
 }
 
+#if USE_GCRYPT
 void *receive_msg_enc(void *args) {
     return receive_msg_inner(args, true);
 }
+#endif
 
 int send_string(char *msg, bool is_enc) {
     dawn_mutex_lock(&send_mutex);
@@ -138,6 +148,7 @@ int send_string(char *msg, bool is_enc) {
     }
     else
     {
+#if USE_GCRYPT
         int gcrypt_len = 0;
         // Include NUL terminator in encrypted message
         char* gcrypt_buf = gcrypt_encrypt_msg(msg, strlen(msg) + 1, &gcrypt_len);
@@ -162,6 +173,7 @@ int send_string(char *msg, bool is_enc) {
 
         dawn_free(gcrypt_buf);
         gcrypt_buf = NULL;
+#endif
     }
 
     if (sendto(sock,
@@ -172,19 +184,23 @@ int send_string(char *msg, bool is_enc) {
         sizeof(addr)) < 0) {
         dawnlog_perror("sendto()");
 
+#if USE_GCRYPT
         // Tidy up probbaly unnecessary if we're exiting, but...
         if (is_enc)
             dawn_free(final_msg);
+#endif
         dawn_mutex_unlock(&send_mutex);
 
         exit(EXIT_FAILURE);
     }
 
+#if USE_GCRYPT
     if (is_enc)
     {
         dawn_free(final_msg);
         final_msg = NULL;
     }
+#endif
 
     dawn_mutex_unlock(&send_mutex);
     return 0;
